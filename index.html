@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+    <head>
+        <style>
+            .section {
+                border: 1px solid #aaa;
+                display: inline-block;
+                min-width: 4em;
+                max-width: 4em;
+                height: 5em;
+                margin-left: -1px;
+                vertical-align: middle;
+                margin-bottom: 1em;
+            }
+            .section.bar {
+                border-right-width: 4px;
+            }
+            .section.current {
+                background-color: rgb(122, 222, 249);
+            }
+            .note-name {
+                font-size: 0.8rem;
+            }
+            span.note-info {
+                padding: 4px 8px;
+                border: 1px solid #aaa;
+                margin-bottom: 4px;
+                display: inline-block;
+                border-radius: 4px;
+                font-size: 0.8em;
+                background-color: #eee;
+                cursor: default;
+            }
+            span.note-info.ok {
+                background-color: #72e78b;
+            }
+            span.note-info.fail {
+                background-color: #e77272;
+            }
+        </style>
+        <script type="module" src="modules/main.js"></script> 
+        <script type="javascript" src="modules/microbit-webusb/ubitwebusb.js"></script>
+    </head>
+    <body>
+        <input type="file" id="filereader"/>
+        <div>
+            <span>Count:</span><input type="checkbox" id="count" checked="true" />
+            <span id="current_count"></span>
+            <input type="button" id="play" value="Play" />
+            <input type="button" id="pause" value="Pause" />
+            <input type="button" id="stop" value="Stop" />
+            <span>Repeat:</span><input type="checkbox" id="repeat" />
+        </div>
+        <div>
+            <div><span>Tempo: </span><span id="tempo"></span> x <input id="factor" type="number" value="1.0" min="0.25" max="2.0" step="0.05"/></div>
+            <div><span>Beat: </span><span id="beat"></span></div>
+            <div>
+                <span>Used notes: </span><span id="used_notes"></span>
+                <button id="detect_all_notes">Detect all notes</button>
+            </div>
+            <div id="section_container"></div>
+        </div>
+        <div>
+            <button id="connect" class="button">Connect</button>
+            <button id="disconnect" class="button">Disconnect All</button>
+            <button id="clear" class="button">Clear</button>
+            <button id="test" class="button">Test</button>
+        </div>
+        <div id="console"></div>
+    </body>
+</html>
