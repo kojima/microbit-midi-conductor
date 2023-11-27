@@ -110,8 +110,7 @@ MidiParser.parse(source, function(obj){
             noteSequence.push({
                 deltaTime: e.deltaTime,
                 data: e.data,
-                durationInDelta: totalTimeDeltas[0],
-                duration: totalTimeDeltas[0] * durationsPerDelta
+                durationInDelta: totalTimeDeltas[0]
             });
             if (e.data[1] > 0) {
                 deltas[e.data[0]] = totalTimeDeltas[0];
@@ -189,9 +188,6 @@ let currentNotes = [];
 let counting = null;
 const updatePlay =() => {
     const now = Date.now();
-    const factor = parseFloat(document.getElementById('factor').value);
-    if (!factor) factor = 1.0;
-
     if (pauseStart) {
         systemMillsAtBegin += now - pauseStart;
         pauseStart = null;
@@ -202,7 +198,9 @@ const updatePlay =() => {
             counting = 0;
         }
     }
-    let currentDuration = now - systemMillsAtBegin;
+    const factor = parseFloat(document.getElementById('factor').value);
+    if (!factor) factor = 1.0;
+    let currentDuration = (now - systemMillsAtBegin) * factor;
     let currentDelta = Math.floor(currentDuration / durationsPerDelta);
     // counting before beginning
     if (counting !== null && counting <= getNumberOfSectionsInBar()) {
@@ -225,16 +223,12 @@ const updatePlay =() => {
         const repeat = document.getElementById('repeat').checked;
         if (repeat) {
             systemMillsAtBegin = Date.now();
-            currentDuration = 0;
-            currentDelta = 0;
             currentSequenceIndex = 0;
             pauseStart = null;
             currentNotes = [];
         } else {
             clearInterval(interval);
             interval = null;
-            currentDuration = 0;
-            currentDelta = 0;
             systemMillsAtBegin = null;
             currentSequenceIndex = 0;
             pauseStart = null;
@@ -258,7 +252,7 @@ const updatePlay =() => {
 
     while(true) {
         const note = noteSequence[currentSequenceIndex];
-        if (!note || note.duration > currentDuration) break;
+        if (!note || note.durationInDelta > currentDelta) break;
         if (note.data[1] > 0) {
             currentNotes.push(note.data[0]);
         } else {
