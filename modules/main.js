@@ -6,33 +6,26 @@ const META_TYPE_BEAT = 88;
 const META_TYPE_TRACK_END = 47;
 const DATA_TYPE_NOTE = 9;
 const notes = {
-    53: 'F3',
-    54: 'F3#/G3b',
-    55: 'G3',
-    56: 'G3#/A3b',
     57: 'A3',
-    58: 'A3#/B3b',
+    58: 'A3#',
     59: 'B3',
     60: 'C4',
-    61: 'C4#/D4b',
+    61: 'C4#',
     62: 'D4',
-    63: 'D4#/E4b',
+    63: 'D4#',
     64: 'E4',
     65: 'F4',
-    66: 'F4#/G4b',
+    66: 'F4#',
     67: 'G4',
-    68: 'G4#/A4b',
+    68: 'G4#',
     69: 'A4',
-    70: 'A4#/B4b',
+    70: 'A4#',
     71: 'B4',
     72: 'C5',
-    73: 'C5#/D5b',
+    73: 'C5#',
     74: 'D5',
-    75: 'D5#/E5b',
+    75: 'D5#',
     76: 'E5',
-    77: 'F5',
-    78: 'F5#/G5b',
-    79: 'G5',
 }
 
 // select the INPUT element that will handle
@@ -57,6 +50,8 @@ let beat = [];
 let minDelta = Number.MAX_VALUE;
 
 let sectionsOfNotes = {};
+
+let auftakt = false;
 
 const getTotalNoteCount = () => {
     const notes = Object.keys(sectionsOfNotes);
@@ -83,14 +78,16 @@ MidiParser.parse(source, function(obj){
     beat = [];
     minDelta = Number.MAX_VALUE;
     sectionsOfNotes = {};
+    auftakt = false;
 
     crochetTimeDivision = obj.timeDivision;
     if (obj.tracks.length < 1) return;
     if (!totalTimeDeltas) totalTimeDeltas = [...new Array(obj.tracks)].map(() => 0);
     const deltas = {};
     const notesInTimes = {};
+    let firstDelta = Number.MAX_VALUE;
     for (let i = 0; i < obj.track.length; i++) {
-        obj.track[i].event.forEach((e, index) => {
+        obj.track[i].event.forEach((e) => {
             //console.log(e);
             if (e.metaType === META_TYPE_TEMPO) {
                 tempo = e.data;
@@ -114,20 +111,20 @@ MidiParser.parse(source, function(obj){
                     durationInDelta: totalTimeDeltas[i]
                 });
                 if (e.data[1] > 0) {
+                    firstDelta = Math.min(firstDelta, totalTimeDeltas[i]);
                     deltas[e.data[0]] = totalTimeDeltas[i];
                     if (!notesInTimes[totalTimeDeltas[i]]) notesInTimes[totalTimeDeltas[i]] = [];
                     notesInTimes[totalTimeDeltas[i]].push(e.data[0]);
                 } else if (totalTimeDeltas[i] - deltas[e.data[0]] > 0) {
-                    const diff = totalTimeDeltas[i] - deltas[e.data[0]];
-                    if (diff >= crochetTimeDivision / 4) {
-                        minDelta = Math.min(minDelta, diff);
-                    }
+                    minDelta = Math.min(minDelta, totalTimeDeltas[i] - deltas[e.data[0]]);
                 }
             }
         });
     }
     noteSequence.sort((a, b) => a.durationInDelta - b.durationInDelta);
     minDelta = crochetTimeDivision / Math.round(crochetTimeDivision / minDelta);
+    const deltaPerBar = beat[0] * (crochetTimeDivision / (beat[1] / 4));
+    auftakt = firstDelta / deltaPerBar >= 0.5;   // Not accurate definition: 0.5
     const notesInSections = {};
     const keyDeltas = Object.keys(notesInTimes);
     for (let i = 0; i < keyDeltas.length; i++) {
@@ -143,8 +140,6 @@ MidiParser.parse(source, function(obj){
     }
     console.log(noteSequence);
     console.log(totalTimeDeltas);
-    console.log(notesInSections);
-    console.log(sectionsOfNotes);
     const command = `notes/${JSON.stringify(sectionsOfNotes)}`;
     console.log(command);
     sendToMicrobit(command);
@@ -200,7 +195,7 @@ const updatePlay =() => {
         pauseStart = null;
     } else if (counting === null) {    // play from the beginning
         const count = document.getElementById('count').checked;
-        if (count && !counting) {
+        if (!auftakt && count && !counting) {
             console.log(minDelta, getNumberOfSectionsInBar());
             counting = 0;
         }
