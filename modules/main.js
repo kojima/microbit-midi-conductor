@@ -89,38 +89,44 @@ MidiParser.parse(source, function(obj){
     if (!totalTimeDeltas) totalTimeDeltas = [...new Array(obj.tracks)].map(() => 0);
     const deltas = {};
     const notesInTimes = {};
-    obj.track[0].event.forEach((e) => {
-        console.log(e);
-        if (e.metaType === META_TYPE_TEMPO) {
-            tempo = e.data;
-            durationsPerDelta = Math.round((tempo/1e3) / crochetTimeDivision);
-            console.log(60 / (tempo/1e6));
-            document.getElementById('tempo').innerText = `${60 / (tempo/1e6)}`;
-        }
-        else if (e.metaType == META_TYPE_BEAT) {
-            beat.push(e.data[0]);
-            beat.push(Math.pow(2, e.data[1]));
-            document.getElementById('beat').innerText = `${beat[0]}/${beat[1]}`;
-        }
-        else if (e.type == META_TYPE_TRACK_END) {
-            totalTimeDeltas[0] += e.deltaTime;
-        }
-        else if (e.type === DATA_TYPE_NOTE) {
-            totalTimeDeltas[0] += e.deltaTime;
-            noteSequence.push({
-                deltaTime: e.deltaTime,
-                data: e.data,
-                durationInDelta: totalTimeDeltas[0]
-            });
-            if (e.data[1] > 0) {
-                deltas[e.data[0]] = totalTimeDeltas[0];
-                if (!notesInTimes[totalTimeDeltas[0]]) notesInTimes[totalTimeDeltas[0]] = [];
-                notesInTimes[totalTimeDeltas[0]].push(e.data[0]);
-            } else if (totalTimeDeltas[0] - deltas[e.data[0]] > 0) {
-                minDelta = Math.min(minDelta, totalTimeDeltas[0] - deltas[e.data[0]]);
+    for (let i = 0; i < obj.track.length; i++) {
+        obj.track[i].event.forEach((e, index) => {
+            //console.log(e);
+            if (e.metaType === META_TYPE_TEMPO) {
+                tempo = e.data;
+                durationsPerDelta = Math.round((tempo/1e3) / crochetTimeDivision);
+                console.log(60 / (tempo/1e6));
+                document.getElementById('tempo').innerText = `${60 / (tempo/1e6)}`;
             }
-        }
-    });
+            else if (e.metaType == META_TYPE_BEAT) {
+                beat.push(e.data[0]);
+                beat.push(Math.pow(2, e.data[1]));
+                document.getElementById('beat').innerText = `${beat[0]}/${beat[1]}`;
+            }
+            else if (e.type == META_TYPE_TRACK_END) {
+                totalTimeDeltas[i] += e.deltaTime;
+            }
+            else if (e.type === DATA_TYPE_NOTE) {
+                totalTimeDeltas[i] += e.deltaTime;
+                noteSequence.push({
+                    deltaTime: e.deltaTime,
+                    data: e.data,
+                    durationInDelta: totalTimeDeltas[i]
+                });
+                if (e.data[1] > 0) {
+                    deltas[e.data[0]] = totalTimeDeltas[i];
+                    if (!notesInTimes[totalTimeDeltas[i]]) notesInTimes[totalTimeDeltas[i]] = [];
+                    notesInTimes[totalTimeDeltas[i]].push(e.data[0]);
+                } else if (totalTimeDeltas[i] - deltas[e.data[0]] > 0) {
+                    const diff = totalTimeDeltas[i] - deltas[e.data[0]];
+                    if (diff >= crochetTimeDivision / 4) {
+                        minDelta = Math.min(minDelta, diff);
+                    }
+                }
+            }
+        });
+    }
+    noteSequence.sort((a, b) => a.durationInDelta - b.durationInDelta);
     minDelta = crochetTimeDivision / Math.round(crochetTimeDivision / minDelta);
     const notesInSections = {};
     const keyDeltas = Object.keys(notesInTimes);
@@ -128,7 +134,7 @@ MidiParser.parse(source, function(obj){
         const key = keyDeltas[i];
         const sectionIndex = Math.floor(parseInt(key) / minDelta);
         const sectionNumber = sectionIndex + 1;
-        notesInSections[sectionIndex] = notesInTimes[key];
+        notesInSections[sectionIndex] = notesInTimes[key].sort((a, b) => b - a);
         const notes = notesInTimes[key];
         for (let note of notes) {
             if (!sectionsOfNotes[note]) sectionsOfNotes[note] = [];
@@ -147,7 +153,8 @@ MidiParser.parse(source, function(obj){
             elm.classList.add('fail');
         });
     }, 10000);
-    console.log(minDelta, Math.ceil(totalTimeDeltas[0] / minDelta));
+    const totalTimeDelta = Math.max(...totalTimeDeltas);
+    console.log(minDelta, Math.ceil(totalTimeDelta / minDelta));
     const sortedNotes = Object.keys(sectionsOfNotes).sort();
     let usedNotesList = [];
     for (let i = 0; i < sortedNotes.length; i++) {
@@ -176,7 +183,7 @@ MidiParser.parse(source, function(obj){
             div.classList.add('bar');
         }
         if (notesInSections[i]) {
-            div.innerHTML = notesInSections[i].map((e) => `<span class="note-name">${notes[e]}</span>`).join('<br/>');
+            div.innerHTML = notesInSections[i].map((n) => `<div class="note-name">${notes[n]}</div>`).join('');
         }
         container.append(div);
     }
