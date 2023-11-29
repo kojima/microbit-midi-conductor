@@ -2,7 +2,20 @@
 <html>
     <head>
         <style>
+            html, body {
+                overscroll-behavior-x: none;
+            }
+            #section_container {
+                padding: 24px 8px;
+                width: 100%;
+                overflow-x: auto;
+                box-sizing: border-box;
+            }
+            #section_container.no-wrap {
+                white-space: nowrap;
+            }
             .section {
+                position: relative;
                 border: 1px solid #aaa;
                 display: inline-block;
                 min-width: 4em;
@@ -42,6 +55,12 @@
             span.note-info.fail {
                 background-color: #e77272;
             }
+            .bar-number {
+                position: absolute;
+                left: 4px;
+                top: -17px;
+                font-size: 12px;
+            }
         </style>
         <script type="module" src="modules/main.js"></script> 
         <script type="javascript" src="modules/microbit-webusb/ubitwebusb.js"></script>
@@ -49,7 +68,7 @@
     <body>
         <input type="file" id="filereader"/>
         <div>
-            <span>Count:</span><input type="checkbox" id="count" checked="true" />
+            <span>Count:</span><input type="checkbox" id="count" checked="true" /><span id="auftakt"></span>
             <span id="current_count"></span>
             <input type="button" id="play" value="Play" />
             <input type="button" id="pause" value="Pause" />
@@ -62,6 +81,9 @@
             <div>
                 <span>Used notes: </span><span id="used_notes"></span>
                 <button id="detect_all_notes">Detect all notes</button>
+            </div>
+            <div>
+                <span>Wrap sections: </span><input type="checkbox" id="wrap_sections" checked />
             </div>
             <div id="section_container"></div>
         </div>

@@ -125,6 +125,7 @@ MidiParser.parse(source, function(obj){
     minDelta = crochetTimeDivision / Math.round(crochetTimeDivision / minDelta);
     const deltaPerBar = beat[0] * (crochetTimeDivision / (beat[1] / 4));
     auftakt = firstDelta / deltaPerBar >= 0.5;   // Not accurate definition: 0.5
+    document.getElementById('auftakt').innerText = auftakt ? '(Auftakt)' : '';
     const notesInSections = {};
     const keyDeltas = Object.keys(notesInTimes);
     for (let i = 0; i < keyDeltas.length; i++) {
@@ -141,9 +142,11 @@ MidiParser.parse(source, function(obj){
     console.log(noteSequence);
     console.log(totalTimeDeltas);
     const command = `notes/${JSON.stringify(sectionsOfNotes)}`;
-    console.log(command);
+    //console.log(command);
     sendToMicrobit(command);
+    const detectInterval = setInterval(detectAllNotes, 2000);
     setTimeout(() => {
+        if (detectInterval) clearInterval(detectInterval);
         document.querySelectorAll('.note-info:not(.ok)').forEach((elm) => {
             elm.classList.add('fail');
         });
@@ -180,7 +183,10 @@ MidiParser.parse(source, function(obj){
         if (notesInSections[i]) {
             div.innerHTML = notesInSections[i].map((n) => `<div class="note-name">${notes[n]}</div>`).join('');
         }
-        container.append(div);
+        if ((i + 1) % getNumberOfSectionsInBar() === 1) {
+            div.innerHTML += `<div class="bar-number">${Math.floor((i + 1) / getNumberOfSectionsInBar() + 1)}</div>`;
+        }
+    container.append(div);
     }
 });
 
@@ -248,8 +254,25 @@ const updatePlay =() => {
     const command = `section/${sectionNumber}`;
     sendToMicrobit(command);
     const div = document.querySelector(`.section[data-num="${sectionNumber}"]`);
+    const wrapped = document.getElementById('wrap_sections').checked;
     if (div) {
         div.classList.add('current');
+        if (wrapped) {
+            const divTop = div.offsetTop;
+            const pageHeight = window.innerHeight;
+            const pageScrollY = window.scrollY;
+            if (divTop - pageScrollY > pageHeight * 0.5 || divTop - pageScrollY < pageHeight * 0.25) {
+                window.scroll(0, divTop - pageHeight * 0.3);
+            }
+        } else {
+            const divLeft = div.offsetLeft;
+            const container = document.getElementById('section_container');
+            const containerWidth = container.getBoundingClientRect().width;
+            const containerScrollLeft = container.scrollLeft;
+            if (divLeft - containerScrollLeft > containerWidth * 0.5 || divLeft - containerScrollLeft < containerWidth * 0.25) {
+                container.scrollLeft = divLeft - containerWidth * 0.3;
+            }
+        }
     }
 
     while(true) {
@@ -306,6 +329,16 @@ document.getElementById('repeat').addEventListener('change', (e) => {
 }, false)
 */
 
+document.getElementById('wrap_sections').addEventListener('change', (e) => {
+    e.preventDefault();
+    const container = document.getElementById('section_container');
+    if (e.target.checked) {
+        container.classList.remove('no-wrap');
+    } else {
+        container.classList.add('no-wrap');
+    }
+}, false)
+
 const repeatNoteDetect = (notes, totalNoteCount) => {
     const note = notes[0];
     const remainingNotes = notes.slice(1);
@@ -318,15 +351,19 @@ const repeatNoteDetect = (notes, totalNoteCount) => {
     }
 }
 
-document.getElementById('detect_all_notes').addEventListener('click', (e) => {
-    e.preventDefault();
+const detectAllNotes = () => {
     const notes = [];
-    document.querySelectorAll('.note-info').forEach((elm) => {
+    document.querySelectorAll('.note-info:not(.ok):not(.fail)').forEach((elm) => {
         const note = elm.getAttribute('data-note');
         notes.push(note);
     })
     const totalNoteCount = getTotalNoteCount();
     repeatNoteDetect(notes, totalNoteCount);
+};
+
+document.getElementById('detect_all_notes').addEventListener('click', (e) => {
+    e.preventDefault();
+    detectAllNotes();
 }, false);
 
 
