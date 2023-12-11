@@ -26,6 +26,8 @@ const notes = {
     74: 'D5',
     75: 'D5#',
     76: 'E5',
+    77: 'F5',
+    79: 'G5',
 }
 
 // select the INPUT element that will handle
@@ -114,7 +116,10 @@ MidiParser.parse(source, function(obj){
                     firstDelta = Math.min(firstDelta, totalTimeDeltas[i]);
                     deltas[e.data[0]] = totalTimeDeltas[i];
                     if (!notesInTimes[totalTimeDeltas[i]]) notesInTimes[totalTimeDeltas[i]] = [];
-                    notesInTimes[totalTimeDeltas[i]].push(e.data[0]);
+                    notesInTimes[totalTimeDeltas[i]].push({
+                        note: e.data[0],
+                        track: i + 1
+                    });
                 } else if (totalTimeDeltas[i] - deltas[e.data[0]] > 0) {
                     minDelta = Math.min(minDelta, totalTimeDeltas[i] - deltas[e.data[0]]);
                 }
@@ -132,11 +137,12 @@ MidiParser.parse(source, function(obj){
         const key = keyDeltas[i];
         const sectionIndex = Math.floor(parseInt(key) / minDelta);
         const sectionNumber = sectionIndex + 1;
-        notesInSections[sectionIndex] = notesInTimes[key].sort((a, b) => b - a);
+        notesInSections[sectionIndex] = notesInTimes[key].sort((a, b) => (-b.track * 100 + b.note) - (-a.track * 100 + a.note));
         const notes = notesInTimes[key];
         for (let note of notes) {
-            if (!sectionsOfNotes[note]) sectionsOfNotes[note] = [];
-            sectionsOfNotes[note].push(sectionNumber);
+            const noteNumber = note.note;
+            if (!sectionsOfNotes[noteNumber]) sectionsOfNotes[noteNumber] = [];
+            sectionsOfNotes[noteNumber].push(sectionNumber);
         }
     }
     console.log(noteSequence);
@@ -144,9 +150,9 @@ MidiParser.parse(source, function(obj){
     const command = `notes/${JSON.stringify(sectionsOfNotes)}`;
     //console.log(command);
     sendToMicrobit(command);
-    const detectInterval = setInterval(detectAllNotes, 2000);
+    //const detectInterval = setInterval(detectAllNotes, 2000);
     setTimeout(() => {
-        if (detectInterval) clearInterval(detectInterval);
+        //if (detectInterval) clearInterval(detectInterval);
         document.querySelectorAll('.note-info:not(.ok)').forEach((elm) => {
             elm.classList.add('fail');
         });
@@ -181,7 +187,7 @@ MidiParser.parse(source, function(obj){
             div.classList.add('bar');
         }
         if (notesInSections[i]) {
-            div.innerHTML = notesInSections[i].map((n) => `<div class="note-name">${notes[n]}</div>`).join('');
+            div.innerHTML = notesInSections[i].map((n) => `<div class="note-name" data-track="${n.track}">${notes[n.note]}</div>`).join('');
         }
         if ((i + 1) % getNumberOfSectionsInBar() === 1) {
             div.innerHTML += `<div class="bar-number">${Math.floor((i + 1) / getNumberOfSectionsInBar() + 1)}</div>`;
@@ -342,18 +348,19 @@ document.getElementById('wrap_sections').addEventListener('change', (e) => {
 const repeatNoteDetect = (notes, totalNoteCount) => {
     const note = notes[0];
     const remainingNotes = notes.slice(1);
-    const command = `detect/${note}/${totalNoteCount}}`;
+    const command = `detect/${note}/${totalNoteCount}`;
+    console.log(command);
     sendToMicrobit(command);
     if (remainingNotes.length > 0) {
         setTimeout(() => {
             repeatNoteDetect(remainingNotes, totalNoteCount);
-        }, 10);
+        }, 25);
     }
 }
 
 const detectAllNotes = () => {
     const notes = [];
-    document.querySelectorAll('.note-info:not(.ok):not(.fail)').forEach((elm) => {
+    document.querySelectorAll('.note-info:not(.fail)').forEach((elm) => {
         const note = elm.getAttribute('data-note');
         notes.push(note);
     })
